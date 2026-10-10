@@ -87,59 +87,83 @@ def file_action():
     filenames = [f.filename for f in files]
     total_size = sum(f.size_mb for f in files)
 
-    # Determine activity type based on action and count
-    if action == 'download':
-        if file_count > 5:
-            activity_type = 'bulk_download'
-            desc = f'Bulk download attempt: {file_count} files ({total_size:.1f} MB)'
-        else:
-            activity_type = 'file_download'
-            desc = f'Downloaded {file_count} file(s): {", ".join(filenames[:3])}'
+    # Check if any sensitive files are involved in ANY action
+    highest_sensitivity = 'normal'
+    sensitive_file = None
+    for f in files:
+        if f.sensitivity == 'restricted':
+            highest_sensitivity = 'restricted'
+            sensitive_file = f
+            break
+        elif f.sensitivity == 'confidential':
+            highest_sensitivity = 'confidential'
+            sensitive_file = f
 
-    elif action == 'share':
-        recipient = request.form.get('recipient', 'external@example.com')
-        if file_count > 5:
-            activity_type = 'bulk_share'
-            desc = f'Bulk share attempt: {file_count} files to {recipient}'
-        else:
-            activity_type = 'file_share'
-            desc = f'Shared {file_count} file(s) with {recipient}: {", ".join(filenames[:3])}'
-
-    elif action == 'export':
-        activity_type = 'data_export'
-        desc = f'Data export: {file_count} file(s) totaling {total_size:.1f} MB'
-
-    elif action == 'access':
-        # For single file access, check sensitivity
-        f = files[0]
-        if f.sensitivity in ('confidential', 'restricted'):
-            activity_type = 'sensitive_access'
-            desc = f'Accessed {f.sensitivity} file: {f.filename}'
-        else:
-            activity_type = 'file_access'
-            desc = f'Accessed file: {f.filename}'
+    if highest_sensitivity in ('confidential', 'restricted'):
+        activity_type = 'sensitive_access'
+        action_verb = 'Accessed'
+        if action == 'download': action_verb = 'Downloaded'
+        if action == 'share': action_verb = 'Shared'
+        if action == 'export': action_verb = 'Exported'
+        
+        desc = f'{action_verb} {highest_sensitivity} file: {sensitive_file.filename}'
+        
+        details = {
+            'file_count': file_count,
+            'files': filenames,
+            'total_size_mb': total_size,
+            'size_mb': total_size,
+            'filename': sensitive_file.filename,
+            'filepath': sensitive_file.filepath,
+            'sensitivity': highest_sensitivity,
+        }
+        if action == 'share':
+            details['recipient'] = request.form.get('recipient', 'external@example.com')
+        if action == 'export':
+            details['export_type'] = 'file_export'
     else:
-        flash('Unknown action.', 'error')
-        return redirect(url_for('employee.file_browser'))
+        # Determine normal activity type based on action and count
+        if action == 'download':
+            if file_count > 5:
+                activity_type = 'bulk_download'
+                desc = f'Bulk download attempt: {file_count} files ({total_size:.1f} MB)'
+            else:
+                activity_type = 'file_download'
+                desc = f'Downloaded {file_count} file(s): {", ".join(filenames[:3])}'
 
-    # Build details JSON
-    details = {
-        'file_count': file_count,
-        'files': filenames,
-        'total_size_mb': total_size,
-        'size_mb': total_size,
-    }
+        elif action == 'share':
+            recipient = request.form.get('recipient', 'external@example.com')
+            if file_count > 5:
+                activity_type = 'bulk_share'
+                desc = f'Bulk share attempt: {file_count} files to {recipient}'
+            else:
+                activity_type = 'file_share'
+                desc = f'Shared {file_count} file(s) with {recipient}: {", ".join(filenames[:3])}'
 
-    if action == 'access' and len(files) == 1:
-        details['filename'] = files[0].filename
-        details['filepath'] = files[0].filepath
-        details['sensitivity'] = files[0].sensitivity
+        elif action == 'export':
+            activity_type = 'data_export'
+            desc = f'Data export: {file_count} file(s) totaling {total_size:.1f} MB'
 
-    if action == 'share':
-        details['recipient'] = request.form.get('recipient', 'external@example.com')
+        elif action == 'access':
+            activity_type = 'file_access'
+            desc = f'Accessed file: {files[0].filename}'
+        else:
+            flash('Unknown action.', 'error')
+            return redirect(url_for('employee.file_browser'))
 
-    if action == 'export':
-        details['export_type'] = 'file_export'
+        # Build details JSON
+        details = {
+            'file_count': file_count,
+            'files': filenames,
+            'total_size_mb': total_size,
+            'size_mb': total_size,
+        }
+
+        if action == 'share':
+            details['recipient'] = request.form.get('recipient', 'external@example.com')
+
+        if action == 'export':
+            details['export_type'] = 'file_export'
 
     activity = Activity(
         user_id=current_user.id,
