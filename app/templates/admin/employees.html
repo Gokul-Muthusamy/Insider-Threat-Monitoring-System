@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Employees{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h3>ITMS</h3><span>Admin Console</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link"><span class="nav-icon">🔔</span> Alerts</a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link active"><span class="nav-icon">👥</span> Employees</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link"><span class="nav-icon">📜</span> Audit Log</a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>👥 Employee Overview</h1>
+                <p class="subtitle">Compare risk scores and monitor employee activities</p>
+            </div>
+        </div>
+
+        <!-- Risk Comparison Chart -->
+        <div class="panel mb-3">
+            <div class="panel-header">
+                <h3>📊 Risk Score Comparison</h3>
+            </div>
+            <div class="panel-body">
+                <div class="chart-container" style="height: 200px;">
+                    <canvas id="riskCompareChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Cards -->
+        <div class="grid-2">
+            {% for ed in employee_data %}
+            <div class="employee-card">
+                <div class="emp-header">
+                    <div class="emp-avatar">{{ ed.user.display_name[0] }}</div>
+                    <div>
+                        <div class="emp-name">
+                            <a href="{{ url_for('admin.employee_detail', user_id=ed.user.id) }}">{{ ed.user.display_name }}</a>
+                        </div>
+                        <div class="emp-dept">{{ ed.user.department }} · {{ ed.user.employee_id }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                            Shift: {{ ed.user.shift_start }} – {{ ed.user.shift_end }}
+                        </div>
+                    </div>
+                    <div style="margin-left: auto; text-align: right;">
+                        <div class="risk-score {{ ed.risk_level }}" style="font-size: 1.8rem; justify-content: flex-end;">
+                            {{ ed.user.risk_score|round(1) }}
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">Risk Score</div>
+                        <div class="risk-bar" style="margin-top: 4px;">
+                            <div class="risk-bar-fill {{ ed.risk_level }}" style="width: {{ ed.user.risk_score }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="emp-stats">
+                    <div class="emp-stat-item">
+                        <div class="emp-stat-value">{{ ed.total_activities }}</div>
+                        <div class="emp-stat-label">Activities</div>
+                    </div>
+                    <div class="emp-stat-item">
+                        <div class="emp-stat-value" style="color: {% if ed.suspicious_activities > 0 %}var(--color-danger){% else %}var(--color-success){% endif %};">
+                            {{ ed.suspicious_activities }}
+                        </div>
+                        <div class="emp-stat-label">Suspicious</div>
+                    </div>
+                    <div class="emp-stat-item">
+                        <div class="emp-stat-value" style="color: {% if ed.open_alerts > 0 %}var(--color-warning){% else %}var(--color-success){% endif %};">
+                            {{ ed.open_alerts }}
+                        </div>
+                        <div class="emp-stat-label">Open Alerts</div>
+                    </div>
+                    <div class="emp-stat-item">
+                        <div class="emp-stat-value">{{ ed.alert_count }}</div>
+                        <div class="emp-stat-label">Total Alerts</div>
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <a href="{{ url_for('admin.employee_detail', user_id=ed.user.id) }}" class="btn btn-sm btn-primary btn-full">
+                        🔍 Investigate
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+fetch('/api/chart/risk-comparison')
+    .then(r => r.json())
+    .then(data => {
+        const ctx = document.getElementById('riskCompareChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Risk Score',
+                    data: data.scores,
+                    backgroundColor: data.colors.map(c => c + '99'),
+                    borderColor: data.colors,
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(148, 163, 184, 0.06)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } },
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#e2e8f0', font: { family: 'Inter', size: 13, weight: 600 } },
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

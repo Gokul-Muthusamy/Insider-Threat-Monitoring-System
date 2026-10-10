@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}File Browser{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h3>ITMS</h3>
+                <span>Employee Portal</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Navigation</div>
+                <a href="{{ url_for('employee.workspace') }}" class="nav-link">
+                    <span class="nav-icon">📊</span> Workspace
+                </a>
+                <a href="{{ url_for('employee.file_browser') }}" class="nav-link active">
+                    <span class="nav-icon">📁</span> File Browser
+                </a>
+                <a href="{{ url_for('employee.activity_log') }}" class="nav-link">
+                    <span class="nav-icon">📋</span> Activity Log
+                </a>
+                <a href="{{ url_for('employee.profile') }}" class="nav-link">
+                    <span class="nav-icon">👤</span> My Profile
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">{{ current_user.department }} · {{ current_user.employee_id }}</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>📁 File Browser</h1>
+                <p class="subtitle">Browse and manage files in your workspace</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <a href="{{ url_for('employee.file_browser', department='all') }}"
+               class="filter-btn {% if current_filter == 'all' %}active{% endif %}">All Files</a>
+            <a href="{{ url_for('employee.file_browser', department=current_user.department) }}"
+               class="filter-btn {% if current_filter == current_user.department %}active{% endif %}">{{ current_user.department }}</a>
+            <a href="{{ url_for('employee.file_browser', department='Shared') }}"
+               class="filter-btn {% if current_filter == 'Shared' %}active{% endif %}">Shared</a>
+        </div>
+
+        <!-- File Actions Form -->
+        <form method="POST" action="{{ url_for('employee.file_action') }}" id="fileActionForm">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Files ({{ files|length }})</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" name="action" value="access" class="btn btn-sm btn-secondary" id="btnAccess">
+                            👁️ Access
+                        </button>
+                        <button type="submit" name="action" value="download" class="btn btn-sm btn-primary" id="btnDownload">
+                            📥 Download
+                        </button>
+                        <button type="submit" name="action" value="share" class="btn btn-sm btn-warning" id="btnShare">
+                            📤 Share
+                        </button>
+                        <button type="submit" name="action" value="export" class="btn btn-sm btn-danger" id="btnExport">
+                            💾 Export
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-body no-pad">
+                    <table class="data-table" id="fileTable">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                                </th>
+                                <th>File</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Department</th>
+                                <th>Sensitivity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in files %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="file_ids" value="{{ file.id }}" class="file-cb">
+                                </td>
+                                <td>
+                                    <div class="file-row">
+                                        <span class="file-icon">
+                                            {% if file.file_type == 'spreadsheet' %}📊
+                                            {% elif file.file_type == 'pdf' %}📄
+                                            {% elif file.file_type == 'document' %}📝
+                                            {% elif file.file_type == 'csv' %}📋
+                                            {% elif file.file_type == 'archive' %}🗂️
+                                            {% elif file.file_type == 'presentation' %}📑
+                                            {% elif file.file_type == 'diagram' %}📐
+                                            {% else %}📄{% endif %}
+                                        </span>
+                                        <div>
+                                            <div class="file-name">{{ file.filename }}</div>
+                                            <div class="file-path">{{ file.filepath }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ file.file_type }}</td>
+                                <td>{{ file.size_mb }} MB</td>
+                                <td>{{ file.department }}</td>
+                                <td>
+                                    <span class="badge-sensitivity {{ file.sensitivity }}">{{ file.sensitivity }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hidden field for share recipient -->
+            <input type="hidden" name="recipient" value="external@example.com">
+        </form>
+
+        <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 1rem;">
+            💡 <strong>Tip:</strong> Select multiple files and use the action buttons. Downloading more than 5 files or sharing more than 5 files will trigger bulk alerts. Accessing confidential or restricted files will generate sensitivity alerts.
+        </p>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(checkbox) {
+    document.querySelectorAll('.file-cb').forEach(cb => cb.checked = checkbox.checked);
+}
+</script>
+{% endblock %}

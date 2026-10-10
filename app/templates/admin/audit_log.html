@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h3>ITMS</h3><span>Admin Console</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link"><span class="nav-icon">🔔</span> Alerts</a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link"><span class="nav-icon">👥</span> Employees</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link active"><span class="nav-icon">📜</span> Audit Log</a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>📜 Audit Log</h1>
+                <p class="subtitle">Administrator action history for accountability</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Admin Actions ({{ logs|length }})</h3>
+            </div>
+            <div class="panel-body no-pad">
+                {% if logs %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td style="white-space: nowrap; font-size: 0.8rem;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td style="font-weight: 500;">{{ log.admin_username }}</td>
+                            <td>{{ log.action }}</td>
+                            <td style="color: var(--accent-cyan);">{{ log.target or '—' }}</td>
+                            <td style="color: var(--text-muted); font-size: 0.8rem;">{{ log.details|truncate(60) if log.details else '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📜</div>
+                    <p>No admin actions recorded yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

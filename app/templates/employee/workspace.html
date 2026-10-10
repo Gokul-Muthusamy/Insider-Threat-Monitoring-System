@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Workspace{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h3>ITMS</h3>
+                <span>Employee Portal</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Navigation</div>
+                <a href="{{ url_for('employee.workspace') }}" class="nav-link active">
+                    <span class="nav-icon">📊</span> Workspace
+                </a>
+                <a href="{{ url_for('employee.file_browser') }}" class="nav-link">
+                    <span class="nav-icon">📁</span> File Browser
+                </a>
+                <a href="{{ url_for('employee.activity_log') }}" class="nav-link">
+                    <span class="nav-icon">📋</span> Activity Log
+                </a>
+                <a href="{{ url_for('employee.profile') }}" class="nav-link">
+                    <span class="nav-icon">👤</span> My Profile
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Quick Scenarios</div>
+                <a href="#" class="nav-link" onclick="triggerScenario('failed-logins'); return false;">
+                    <span class="nav-icon">🔑</span> Failed Logins
+                </a>
+                <a href="#" class="nav-link" onclick="triggerScenario('bulk-download'); return false;">
+                    <span class="nav-icon">📥</span> Bulk Download
+                </a>
+                <a href="#" class="nav-link" onclick="triggerScenario('bulk-share'); return false;">
+                    <span class="nav-icon">📤</span> Bulk Share
+                </a>
+                <a href="#" class="nav-link" onclick="triggerScenario('sensitive-access'); return false;">
+                    <span class="nav-icon">🔒</span> Sensitive File
+                </a>
+                <a href="#" class="nav-link" onclick="triggerScenario('large-export'); return false;">
+                    <span class="nav-icon">💾</span> Large Export
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">{{ current_user.department }} · {{ current_user.employee_id }}</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>Welcome, {{ current_user.display_name }} 👋</h1>
+                <p class="subtitle">{{ current_user.department }} Department · Shift: {{ current_user.shift_start }}–{{ current_user.shift_end }}</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon cyan">📁</div>
+                </div>
+                <div class="stat-value">{{ files|length }}</div>
+                <div class="stat-label">Accessible Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon blue">📋</div>
+                </div>
+                <div class="stat-value">{{ activities|length }}</div>
+                <div class="stat-label">Recent Activities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon {% if current_user.risk_score >= 70 %}red{% elif current_user.risk_score >= 40 %}yellow{% else %}green{% endif %}">⚡</div>
+                </div>
+                <div class="stat-value">{{ current_user.risk_score|round(1) }}</div>
+                <div class="stat-label">Risk Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon {% if alert_count > 0 %}red{% else %}green{% endif %}">🔔</div>
+                </div>
+                <div class="stat-value">{{ alert_count }}</div>
+                <div class="stat-label">Alerts</div>
+            </div>
+        </div>
+
+        <!-- Two-column layout -->
+        <div class="grid-2">
+            <!-- Recent Activity -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>📋 Recent Activity</h3>
+                    <a href="{{ url_for('employee.activity_log') }}" class="btn btn-xs btn-secondary">View All</a>
+                </div>
+                <div class="panel-body">
+                    {% if activities %}
+                    <div class="timeline">
+                        {% for act in activities %}
+                        <div class="timeline-item {% if act.is_suspicious %}suspicious{% endif %}">
+                            <div class="timeline-time">{{ act.timestamp.strftime('%b %d, %H:%M') }}</div>
+                            <div class="timeline-content">
+                                <span class="timeline-type">{{ act.activity_type }}</span>
+                                {{ act.description }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <p>No recent activities</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Demo Scenarios -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>🎯 Demonstration Scenarios</h3>
+                </div>
+                <div class="panel-body">
+                    <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 1rem;">
+                        Trigger simulated suspicious activities to demonstrate the detection engine.
+                    </p>
+                    <div class="scenario-grid">
+                        <div class="scenario-card" onclick="triggerScenario('failed-logins')" id="scenarioFailedLogins">
+                            <div class="scenario-icon">🔑</div>
+                            <div class="scenario-title">Failed Logins</div>
+                            <div class="scenario-desc">5 failed login attempts</div>
+                        </div>
+                        <div class="scenario-card" onclick="triggerScenario('bulk-download')" id="scenarioBulkDownload">
+                            <div class="scenario-icon">📥</div>
+                            <div class="scenario-title">Bulk Download</div>
+                            <div class="scenario-desc">Download 8 files at once</div>
+                        </div>
+                        <div class="scenario-card" onclick="triggerScenario('bulk-share')" id="scenarioBulkShare">
+                            <div class="scenario-icon">📤</div>
+                            <div class="scenario-title">Bulk Share</div>
+                            <div class="scenario-desc">Share 7 files externally</div>
+                        </div>
+                        <div class="scenario-card" onclick="triggerScenario('sensitive-access')" id="scenarioSensitive">
+                            <div class="scenario-icon">🔒</div>
+                            <div class="scenario-title">Sensitive File</div>
+                            <div class="scenario-desc">Access restricted file</div>
+                        </div>
+                        <div class="scenario-card" onclick="triggerScenario('large-export')" id="scenarioExport">
+                            <div class="scenario-icon">💾</div>
+                            <div class="scenario-title">Large Export</div>
+                            <div class="scenario-desc">Export 75 MB of data</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function triggerScenario(scenario) {
+    const card = event.currentTarget;
+    card.style.borderColor = 'var(--accent-cyan)';
+    card.innerHTML = '<div class="spinner"></div><div style="margin-top:0.5rem; font-size:0.8rem;">Running...</div>';
+
+    try {
+        const response = await fetch(`/api/scenario/${scenario}`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            card.innerHTML = `<div style="color: var(--color-success); font-size: 1.5rem;">✓</div>
+                <div style="margin-top:0.5rem; font-size:0.8rem; color: var(--color-success);">${data.message}</div>`;
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            card.innerHTML = `<div style="color: var(--color-danger); font-size: 1.5rem;">✕</div>
+                <div style="margin-top:0.5rem; font-size:0.8rem; color: var(--color-danger);">${data.error || 'Failed'}</div>`;
+            setTimeout(() => location.reload(), 2000);
+        }
+    } catch (err) {
+        card.innerHTML = `<div style="color: var(--color-danger);">Error: ${err.message}</div>`;
+        setTimeout(() => location.reload(), 2000);
+    }
+}
+</script>
+{% endblock %}

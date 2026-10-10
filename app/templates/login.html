@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block body %}
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-brand">
+            <div class="shield-icon">🛡️</div>
+            <h1>Insider Threat Monitor</h1>
+            <p>Enterprise Security Intelligence Platform · T1-PS3</p>
+        </div>
+
+        <div class="login-card">
+            <h2>Secure Sign In</h2>
+
+            <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-input"
+                           placeholder="Enter your username" autocomplete="username" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-input"
+                           placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+                    🔐 Sign In
+                </button>
+            </form>
+
+            <div class="demo-accounts">
+                <h4>Demo Accounts</h4>
+                <div class="demo-btn-group">
+                    <button class="demo-btn" onclick="fillLogin('Pranav', '123')">
+                        Pranav
+                        <span class="role-tag">Administrator</span>
+                    </button>
+                    <button class="demo-btn" onclick="fillLogin('Gokul', '123')">
+                        Gokul
+                        <span class="role-tag">Finance · Employee</span>
+                    </button>
+                    <button class="demo-btn" onclick="fillLogin('Bharath', '123')">
+                        Bharath
+                        <span class="role-tag">Operations · Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fillLogin(username, password) {
+    document.getElementById('username').value = username;
+    document.getElementById('password').value = password;
+    // Visual feedback
+    document.getElementById('loginBtn').style.boxShadow = '0 0 20px rgba(6, 182, 212, 0.5)';
+    setTimeout(() => {
+        document.getElementById('loginBtn').style.boxShadow = '';
+    }, 600);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h3>ITMS</h3>
+                <span>Admin Console</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link active">
+                    <span class="nav-icon">📊</span> Dashboard
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link">
+                    <span class="nav-icon">🔔</span> Alerts
+                    {% if open_alerts > 0 %}
+                    <span class="badge">{{ open_alerts }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link">
+                    <span class="nav-icon">👥</span> Employees
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link">
+                    <span class="nav-icon">📜</span> Audit Log
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>📊 Security Dashboard</h1>
+                <p class="subtitle">Real-time insider threat monitoring overview</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-secondary" onclick="location.reload()">🔄 Refresh</button>
+                <button class="btn btn-sm btn-danger" onclick="document.getElementById('resetModal').classList.add('active')">
+                    🗑️ Reset Demo
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon cyan">📋</div>
+                </div>
+                <div class="stat-value">{{ total_activities }}</div>
+                <div class="stat-label">Total Activities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon red">⚠️</div>
+                </div>
+                <div class="stat-value">{{ suspicious_activities }}</div>
+                <div class="stat-label">Suspicious Activities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon yellow">🔔</div>
+                </div>
+                <div class="stat-value">{{ open_alerts }}</div>
+                <div class="stat-label">Open Alerts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon purple">📊</div>
+                </div>
+                <div class="stat-value">{{ total_alerts }}</div>
+                <div class="stat-label">Total Alerts</div>
+            </div>
+        </div>
+
+        <!-- Employee Risk Comparison -->
+        <div class="grid-2">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>👥 Employee Risk Scores</h3>
+                    <a href="{{ url_for('admin.employees') }}" class="btn btn-xs btn-secondary">View All</a>
+                </div>
+                <div class="panel-body">
+                    {% for emp in employees %}
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0;
+                                {% if not loop.last %}border-bottom: 1px solid var(--border-color);{% endif %}">
+                        <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%;
+                             background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+                             display: flex; align-items: center; justify-content: center;
+                             font-weight: 700; color: #fff; flex-shrink: 0;">
+                            {{ emp.display_name[0] }}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--text-heading);">
+                                <a href="{{ url_for('admin.employee_detail', user_id=emp.id) }}">{{ emp.display_name }}</a>
+                            </div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                {{ emp.department }} · {{ emp.employee_id }}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="risk-score {% if emp.risk_score >= 70 %}high{% elif emp.risk_score >= 40 %}medium{% else %}low{% endif %}">
+                                {{ emp.risk_score|round(1) }}
+                            </div>
+                            <div class="risk-bar" style="margin-top: 4px;">
+                                <div class="risk-bar-fill {% if emp.risk_score >= 70 %}high{% elif emp.risk_score >= 40 %}medium{% else %}low{% endif %}"
+                                     style="width: {{ emp.risk_score }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Alert Severity Chart -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>📊 Alert Distribution</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-container" style="height: 220px;">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+
+                    <!-- Severity Summary -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 1rem;">
+                        <div style="text-align: center; padding: 0.5rem; background: var(--color-critical-bg); border-radius: var(--radius-sm);">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-critical);">{{ severity_counts.critical }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Critical</div>
+                        </div>
+                        <div style="text-align: center; padding: 0.5rem; background: var(--color-danger-bg); border-radius: var(--radius-sm);">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-danger);">{{ severity_counts.high }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">High</div>
+                        </div>
+                        <div style="text-align: center; padding: 0.5rem; background: var(--color-warning-bg); border-radius: var(--radius-sm);">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-warning);">{{ severity_counts.medium }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Medium</div>
+                        </div>
+                        <div style="text-align: center; padding: 0.5rem; background: var(--color-success-bg); border-radius: var(--radius-sm);">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-success);">{{ severity_counts.low }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Low</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Alerts + Activity Timeline -->
+        <div class="grid-2">
+            <!-- Recent Alerts -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>🔔 Recent Alerts</h3>
+                    <a href="{{ url_for('admin.alerts') }}" class="btn btn-xs btn-secondary">View All</a>
+                </div>
+                <div class="panel-body no-pad">
+                    {% if recent_alerts %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Alert</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in recent_alerts %}
+                            <tr style="cursor: pointer;" onclick="location.href='{{ url_for('admin.alert_detail', alert_id=alert.id) }}'">
+                                <td>
+                                    <div style="font-weight: 500;">{{ alert.title|truncate(40) }}</div>
+                                </td>
+                                <td><span class="badge-severity {{ alert.severity }}">{{ alert.severity }}</span></td>
+                                <td><span class="badge-status {{ alert.status }}">{{ alert.status }}</span></td>
+                                <td style="white-space: nowrap; color: var(--text-muted); font-size: 0.8rem;">{{ alert.created_at.strftime('%b %d, %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">🔔</div>
+                        <p>No alerts yet. Trigger scenarios from employee accounts to generate alerts.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>📋 Recent Activity</h3>
+                </div>
+                <div class="panel-body">
+                    {% if recent_activities %}
+                    <div class="timeline">
+                        {% for act in recent_activities %}
+                        <div class="timeline-item {% if act.is_suspicious %}suspicious{% endif %}">
+                            <div class="timeline-time">{{ act.timestamp.strftime('%b %d, %H:%M') }} · {{ act.user.display_name }}</div>
+                            <div class="timeline-content">
+                                <span class="timeline-type">{{ act.activity_type }}</span>
+                                {{ act.description }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <p>No activities recorded</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline Chart -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>📈 Activity Trend (7 Days)</h3>
+            </div>
+            <div class="panel-body">
+                <div class="chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Reset Confirmation Modal -->
+<div class="modal-overlay" id="resetModal">
+    <div class="modal-box">
+        <h3>⚠️ Reset Demonstration Data</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+            This will clear all activities, alerts, and reset risk scores. Type <strong>RESET</strong> to confirm.
+        </p>
+        <form method="POST" action="{{ url_for('admin.reset_demo') }}">
+            <div class="form-group">
+                <input type="text" name="confirm" class="form-input" placeholder="Type RESET to confirm" required>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('resetModal').classList.remove('active')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="flex:1;">Reset Data</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Severity Doughnut Chart
+const sevCtx = document.getElementById('severityChart').getContext('2d');
+new Chart(sevCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Critical', 'High', 'Medium', 'Low'],
+        datasets: [{
+            data: [{{ severity_counts.critical }}, {{ severity_counts.high }}, {{ severity_counts.medium }}, {{ severity_counts.low }}],
+            backgroundColor: ['#dc2626', '#ef4444', '#f59e0b', '#22c55e'],
+            borderColor: '#1a1f35',
+            borderWidth: 3,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    color: '#94a3b8',
+                    font: { family: 'Inter', size: 11 },
+                    padding: 15,
+                    usePointStyle: true,
+                    pointStyleWidth: 8,
+                }
+            }
+        }
+    }
+});
+
+// Activity Timeline Chart
+fetch('/api/chart/activity-timeline')
+    .then(r => r.json())
+    .then(data => {
+        const tlCtx = document.getElementById('timelineChart').getContext('2d');
+        new Chart(tlCtx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Normal',
+                        data: data.normal,
+                        backgroundColor: 'rgba(6, 182, 212, 0.6)',
+                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Suspicious',
+                        data: data.suspicious,
+                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                        borderRadius: 4,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.06)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } },
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.06)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, stepSize: 1 },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#94a3b8',
+                            font: { family: 'Inter', size: 11 },
+                            usePointStyle: true,
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

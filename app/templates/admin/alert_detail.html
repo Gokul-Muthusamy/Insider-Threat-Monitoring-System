@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Alert #{{ alert.id }}{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h3>ITMS</h3><span>Admin Console</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link active"><span class="nav-icon">🔔</span> Alerts</a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link"><span class="nav-icon">👥</span> Employees</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link"><span class="nav-icon">📜</span> Audit Log</a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <a href="{{ url_for('admin.alerts') }}" style="font-size: 0.85rem; color: var(--text-muted);">← Back to Alerts</a>
+                <h1>🔍 Alert #{{ alert.id }} — Investigation</h1>
+                <p class="subtitle">{{ alert.title }}</p>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <!-- Alert Details -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Alert Details</h3>
+                    <span class="badge-severity {{ alert.severity }}">{{ alert.severity }}</span>
+                </div>
+                <div class="panel-body">
+                    <div class="profile-grid mb-2">
+                        <div class="profile-item">
+                            <div class="label">Alert Type</div>
+                            <div class="value" style="font-size: 0.9rem;">{{ alert.alert_type }}</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="label">Status</div>
+                            <div class="value"><span class="badge-status {{ alert.status }}">{{ alert.status }}</span></div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="label">Employee</div>
+                            <div class="value" style="font-size: 0.9rem;">
+                                {% if employee %}
+                                <a href="{{ url_for('admin.employee_detail', user_id=employee.id) }}">{{ employee.display_name }}</a>
+                                ({{ employee.employee_id }})
+                                {% else %}Unknown{% endif %}
+                            </div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="label">Risk Impact</div>
+                            <div class="value" style="color: var(--color-danger);">+{{ alert.risk_score_impact }}</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="label">Created</div>
+                            <div class="value" style="font-size: 0.9rem;">{{ alert.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                        </div>
+                        <div class="profile-item">
+                            <div class="label">Last Updated</div>
+                            <div class="value" style="font-size: 0.9rem;">{{ alert.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 1rem 0 0.5rem; font-size: 0.9rem;">Description</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6;">{{ alert.description }}</p>
+
+                    <!-- Evidence -->
+                    {% if evidence %}
+                    <h4 style="margin: 1.2rem 0 0.5rem; font-size: 0.9rem;">📋 Evidence</h4>
+                    <div class="evidence-box">
+                        {% for key, value in evidence.items() %}
+                        <div class="evidence-item">
+                            <span class="evidence-key">{{ key|replace('_', ' ')|title }}</span>
+                            <span class="evidence-value">
+                                {% if value is iterable and value is not string %}
+                                {{ value|join(', ') }}
+                                {% else %}
+                                {{ value }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Existing Investigation Notes -->
+                    {% if alert.investigation_notes %}
+                    <h4 style="margin: 1.2rem 0 0.5rem; font-size: 0.9rem;">📝 Investigation Notes</h4>
+                    <div class="investigation-notes">{{ alert.investigation_notes }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Investigation Actions -->
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>🔧 Update Investigation</h3>
+                    </div>
+                    <div class="panel-body">
+                        <form method="POST" action="{{ url_for('admin.update_alert', alert_id=alert.id) }}">
+                            <div class="form-group">
+                                <label for="status">Update Status</label>
+                                <select name="status" id="status" class="form-input">
+                                    <option value="open" {% if alert.status == 'open' %}selected{% endif %}>Open</option>
+                                    <option value="investigating" {% if alert.status == 'investigating' %}selected{% endif %}>Investigating</option>
+                                    <option value="resolved" {% if alert.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                                    <option value="dismissed" {% if alert.status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="investigation_notes">Add Investigation Note</label>
+                                <textarea name="investigation_notes" id="investigation_notes" class="form-input"
+                                          placeholder="Enter your investigation findings, observations, or recommendations..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-full">
+                                💾 Save Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Related Suspicious Activities -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>📋 Related Suspicious Activities</h3>
+                    </div>
+                    <div class="panel-body">
+                        {% if related_activities %}
+                        <div class="timeline">
+                            {% for act in related_activities[:10] %}
+                            <div class="timeline-item suspicious">
+                                <div class="timeline-time">{{ act.timestamp.strftime('%b %d, %H:%M') }}</div>
+                                <div class="timeline-content">
+                                    <span class="timeline-type">{{ act.activity_type }}</span>
+                                    {{ act.description }}
+                                    <div style="font-size: 0.75rem; color: var(--color-danger); margin-top: 2px;">
+                                        Risk: +{{ act.risk_contribution }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state" style="padding: 1.5rem;">
+                            <p>No related suspicious activities found</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

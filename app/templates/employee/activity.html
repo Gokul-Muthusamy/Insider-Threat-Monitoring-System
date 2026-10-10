@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Activity Log{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text">
+                <h3>ITMS</h3>
+                <span>Employee Portal</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Navigation</div>
+                <a href="{{ url_for('employee.workspace') }}" class="nav-link">
+                    <span class="nav-icon">📊</span> Workspace
+                </a>
+                <a href="{{ url_for('employee.file_browser') }}" class="nav-link">
+                    <span class="nav-icon">📁</span> File Browser
+                </a>
+                <a href="{{ url_for('employee.activity_log') }}" class="nav-link active">
+                    <span class="nav-icon">📋</span> Activity Log
+                </a>
+                <a href="{{ url_for('employee.profile') }}" class="nav-link">
+                    <span class="nav-icon">👤</span> My Profile
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">{{ current_user.department }} · {{ current_user.employee_id }}</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>📋 Activity Log</h1>
+                <p class="subtitle">Your chronological activity timeline</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Activities (Page {{ activities.page }} of {{ activities.pages or 1 }})</h3>
+            </div>
+            <div class="panel-body no-pad">
+                {% if activities.items %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>IP Address</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for act in activities.items %}
+                        <tr>
+                            <td style="white-space: nowrap;">{{ act.timestamp.strftime('%b %d, %H:%M:%S') }}</td>
+                            <td><span class="timeline-type">{{ act.activity_type }}</span></td>
+                            <td>{{ act.description }}</td>
+                            <td style="color: var(--text-muted);">{{ act.ip_address or '—' }}</td>
+                            <td>
+                                {% if act.is_suspicious %}
+                                <span class="badge-severity high">⚠ Suspicious</span>
+                                {% else %}
+                                <span class="badge-severity low">Normal</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <p>No activities recorded yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if activities.pages > 1 %}
+        <div class="pagination">
+            {% if activities.has_prev %}
+            <a href="{{ url_for('employee.activity_log', page=activities.prev_num) }}">← Prev</a>
+            {% endif %}
+            {% for p in activities.iter_pages() %}
+                {% if p %}
+                <a href="{{ url_for('employee.activity_log', page=p) }}"
+                   class="{% if p == activities.page %}active{% endif %}">{{ p }}</a>
+                {% else %}
+                <span>...</span>
+                {% endif %}
+            {% endfor %}
+            {% if activities.has_next %}
+            <a href="{{ url_for('employee.activity_log', page=activities.next_num) }}">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

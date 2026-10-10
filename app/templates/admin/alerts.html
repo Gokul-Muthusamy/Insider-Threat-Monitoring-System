@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h3>ITMS</h3><span>Admin Console</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link active"><span class="nav-icon">🔔</span> Alerts</a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link"><span class="nav-icon">👥</span> Employees</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link"><span class="nav-icon">📜</span> Audit Log</a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1>🔔 Security Alerts</h1>
+                <p class="subtitle">Monitor and investigate security alerts</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 500;">Status:</span>
+            <a href="{{ url_for('admin.alerts', status='all', severity=severity_filter) }}"
+               class="filter-btn {% if status_filter == 'all' %}active{% endif %}">All</a>
+            <a href="{{ url_for('admin.alerts', status='open', severity=severity_filter) }}"
+               class="filter-btn {% if status_filter == 'open' %}active{% endif %}">Open</a>
+            <a href="{{ url_for('admin.alerts', status='investigating', severity=severity_filter) }}"
+               class="filter-btn {% if status_filter == 'investigating' %}active{% endif %}">Investigating</a>
+            <a href="{{ url_for('admin.alerts', status='resolved', severity=severity_filter) }}"
+               class="filter-btn {% if status_filter == 'resolved' %}active{% endif %}">Resolved</a>
+            <a href="{{ url_for('admin.alerts', status='dismissed', severity=severity_filter) }}"
+               class="filter-btn {% if status_filter == 'dismissed' %}active{% endif %}">Dismissed</a>
+
+            <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 500; margin-left: 1rem;">Severity:</span>
+            <a href="{{ url_for('admin.alerts', status=status_filter, severity='all') }}"
+               class="filter-btn {% if severity_filter == 'all' %}active{% endif %}">All</a>
+            <a href="{{ url_for('admin.alerts', status=status_filter, severity='critical') }}"
+               class="filter-btn {% if severity_filter == 'critical' %}active{% endif %}">Critical</a>
+            <a href="{{ url_for('admin.alerts', status=status_filter, severity='high') }}"
+               class="filter-btn {% if severity_filter == 'high' %}active{% endif %}">High</a>
+            <a href="{{ url_for('admin.alerts', status=status_filter, severity='medium') }}"
+               class="filter-btn {% if severity_filter == 'medium' %}active{% endif %}">Medium</a>
+        </div>
+
+        <!-- Alerts Table -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Alerts ({{ alerts|length }})</h3>
+            </div>
+            <div class="panel-body no-pad">
+                {% if alerts %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Alert</th>
+                            <th>Employee</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Risk Impact</th>
+                            <th>Created</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                        <tr>
+                            <td style="color: var(--text-muted);">#{{ alert.id }}</td>
+                            <td>
+                                <div style="font-weight: 500;">{{ alert.title|truncate(50) }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ alert.alert_type }}</div>
+                            </td>
+                            <td>
+                                {% set emp = alert.user %}
+                                {% if emp %}{{ emp.display_name }}{% else %}Unknown{% endif %}
+                            </td>
+                            <td><span class="badge-severity {{ alert.severity }}">{{ alert.severity }}</span></td>
+                            <td><span class="badge-status {{ alert.status }}">{{ alert.status }}</span></td>
+                            <td>
+                                <span style="color: var(--color-danger); font-weight: 600;">+{{ alert.risk_score_impact }}</span>
+                            </td>
+                            <td style="white-space: nowrap; color: var(--text-muted); font-size: 0.8rem;">
+                                {{ alert.created_at.strftime('%b %d, %H:%M') }}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.alert_detail', alert_id=alert.id) }}" class="btn btn-xs btn-primary">
+                                    Investigate
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">🔔</div>
+                    <p>No alerts match the current filters</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

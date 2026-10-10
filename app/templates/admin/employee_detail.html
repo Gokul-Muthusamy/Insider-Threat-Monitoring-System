@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Employee: {{ employee.display_name }}{% endblock %}
+
+{% block body %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">🛡️</div>
+            <div class="brand-text"><h3>ITMS</h3><span>Admin Console</span></div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link"><span class="nav-icon">📊</span> Dashboard</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Security</div>
+                <a href="{{ url_for('admin.alerts') }}" class="nav-link"><span class="nav-icon">🔔</span> Alerts</a>
+                <a href="{{ url_for('admin.employees') }}" class="nav-link active"><span class="nav-icon">👥</span> Employees</a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin.audit_log') }}" class="nav-link"><span class="nav-icon">📜</span> Audit Log</a>
+            </div>
+        </nav>
+        <div class="sidebar-user">
+            <div class="user-avatar" style="background: linear-gradient(135deg, #dc2626, #f59e0b);">{{ current_user.display_name[0] }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ current_user.display_name }}</div>
+                <div class="user-role">Administrator</div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" title="Logout" style="color: var(--text-muted); font-size: 1.2rem;">⏻</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <a href="{{ url_for('admin.employees') }}" style="font-size: 0.85rem; color: var(--text-muted);">← Back to Employees</a>
+                <h1>🔍 {{ employee.display_name }} — Investigation</h1>
+                <p class="subtitle">{{ employee.department }} · {{ employee.employee_id }} · Shift: {{ employee.shift_start }}–{{ employee.shift_end }}</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon {% if risk_level == 'high' %}red{% elif risk_level == 'medium' %}yellow{% else %}green{% endif %}">⚡</div>
+                </div>
+                <div class="stat-value risk-score {{ risk_level }}">{{ employee.risk_score|round(1) }}</div>
+                <div class="stat-label">Risk Score ({{ risk_level }})</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon blue">📋</div>
+                </div>
+                <div class="stat-value">{{ activities|length }}</div>
+                <div class="stat-label">Recent Activities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon yellow">🔔</div>
+                </div>
+                <div class="stat-value">{{ alerts|length }}</div>
+                <div class="stat-label">Total Alerts</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <!-- Alerts -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>🔔 Alerts for {{ employee.display_name }}</h3>
+                </div>
+                <div class="panel-body no-pad">
+                    {% if alerts %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Alert</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in alerts %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 500;">{{ alert.title|truncate(45) }}</div>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted);">{{ alert.created_at.strftime('%b %d, %H:%M') }}</div>
+                                </td>
+                                <td><span class="badge-severity {{ alert.severity }}">{{ alert.severity }}</span></td>
+                                <td><span class="badge-status {{ alert.status }}">{{ alert.status }}</span></td>
+                                <td><a href="{{ url_for('admin.alert_detail', alert_id=alert.id) }}" class="btn btn-xs btn-primary">View</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state" style="padding: 2rem;">
+                        <p>No alerts for this employee</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Risk Breakdown -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>⚠️ Risk Breakdown</h3>
+                </div>
+                <div class="panel-body">
+                    {% if risk_breakdown %}
+                    {% for item in risk_breakdown %}
+                    <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0;
+                                {% if not loop.last %}border-bottom: 1px solid var(--border-color);{% endif %}">
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.85rem; font-weight: 500;">{{ item.description }}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">{{ item.timestamp }}</div>
+                        </div>
+                        <span class="badge-severity {% if item.risk_contribution >= 20 %}high{% elif item.risk_contribution >= 10 %}medium{% else %}low{% endif %}">
+                            +{{ item.risk_contribution }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state" style="padding: 1.5rem;">
+                        <p>No risk contributions</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>📋 Activity Timeline</h3>
+            </div>
+            <div class="panel-body no-pad">
+                {% if activities %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>IP</th>
+                            <th>Status</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for act in activities %}
+                        <tr>
+                            <td style="white-space: nowrap; font-size: 0.8rem;">{{ act.timestamp.strftime('%b %d, %H:%M:%S') }}</td>
+                            <td><span class="timeline-type">{{ act.activity_type }}</span></td>
+                            <td>{{ act.description }}</td>
+                            <td style="color: var(--text-muted); font-size: 0.8rem;">{{ act.ip_address or '—' }}</td>
+                            <td>
+                                {% if act.is_suspicious %}
+                                <span class="badge-severity high">⚠</span>
+                                {% else %}
+                                <span class="badge-severity low">✓</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if act.risk_contribution > 0 %}
+                                <span style="color: var(--color-danger); font-weight: 600; font-size: 0.85rem;">+{{ act.risk_contribution }}</span>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <p>No activities recorded</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
